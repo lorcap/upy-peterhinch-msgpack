@@ -526,7 +526,7 @@ class TestUmsgpack(unittest.TestCase):
                 return struct.pack("<II", self.real, self.imag)
 
             @classmethod
-            def unpackb(cls, data):
+            def unpackb(cls, data, options):
                 return cls(*struct.unpack("<II", data))
 
         obj, data = CustomComplex(123, 456), b"\xd7\x20\x7b\x00\x00\x00\xc8\x01\x00\x00"
@@ -599,7 +599,7 @@ class TestUmsgpack(unittest.TestCase):
                 return umsgpack.dumps([self.length, self.width])
 
             @classmethod
-            def unpackb(cls, data):
+            def unpackb(cls, data, options):
                 return cls(*umsgpack.loads(data))
 
         class Square(Rectangle):

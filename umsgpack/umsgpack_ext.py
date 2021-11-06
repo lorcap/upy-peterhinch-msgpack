@@ -38,7 +38,7 @@ class Complex:
         return struct.pack(">ff", self.c.real, self.c.imag)
 
     @staticmethod
-    def unpackb(data):
+    def unpackb(data, options):
         return complex(*struct.unpack(">ff", data))
 
 @umsgpack.ext_serializable(0x51)
@@ -53,7 +53,7 @@ class Set:
         return umsgpack.dumps(list(self.s))
 
     @staticmethod
-    def unpackb(data):
+    def unpackb(data, options):
         return set(umsgpack.loads(data))
 
 @umsgpack.ext_serializable(0x52)
@@ -68,5 +68,5 @@ class Tuple:
         return umsgpack.dumps(list(self.s))  # Infinite recursion
 
     @staticmethod
-    def unpackb(data):
+    def unpackb(data, options):
         return tuple(umsgpack.loads(data))

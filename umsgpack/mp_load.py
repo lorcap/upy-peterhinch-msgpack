@@ -127,7 +127,7 @@ def _unpack_ext(code, fp, options):
     # Unpack with ext classes, if type is registered
     if ext_type in ext_type_to_class:
         try:
-            return ext_type_to_class[ext_type].unpackb(ext_data)
+            return ext_type_to_class[ext_type].unpackb(ext_data, options)
         except AttributeError:
             raise NotImplementedError("Ext class {:s} lacks unpackb()".format(repr(ext_type_to_class[ext_type])))
 
