@@ -11,5 +11,12 @@ mv umsgpack/umsgpack_ext.py umsgpack/umsgpack_ext.tmp
 run python3 test_umsgpack.py
 mv umsgpack/umsgpack_ext.tmp umsgpack/umsgpack_ext.py
 
+if [ ! -e datetime.py ]
+then
+        read -p 'Micropython `datetime.py` not found. Download it? [y/N]' -n 1
+        [[ $REPLY == y ]] \
+        && curl -O https://raw.githubusercontent.com/lorcap/upy-micropython-lib/datetime/python-stdlib/datetime/datetime.py
+fi
+
 run python3 test_umsgpack_ext.py
 run $MP test_umsgpack_ext.py

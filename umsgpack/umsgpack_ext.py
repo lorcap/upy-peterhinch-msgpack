@@ -12,12 +12,19 @@
 import umsgpack
 import struct
 
+try:
+    import datetime
+except ImportError:
+    pass
+
 # Entries in mpext are required where types are to be handled without declaring
 # an ext_serializable class in the application. This example enables complex,
 # tuple and set types to be packed as if they were native to umsgpack.
 # Options (kwargs to dump and dumps) may be passed to constructor including new
 # type-specific options
 def mpext(obj, options):
+    if "datetime" in options and options["datetime"] and isinstance(obj, datetime.datetime):
+        return Timestamp.from_datetime(obj)
     if isinstance(obj, complex):
         return Complex(obj)
     if isinstance(obj, set):
@@ -25,6 +32,94 @@ def mpext(obj, options):
     if isinstance(obj, tuple):
         return Tuple(obj)
     return obj
+
+@umsgpack.ext_serializable(-1)
+class Timestamp:
+    def __init__(self, seconds, nanoseconds=0):
+        if not (0 <= nanoseconds < 10**9):
+            raise ValueError
+        self.s = seconds
+        self.ns = nanoseconds
+
+    def __str__(self):
+        return "Timestamp({}, {})".format(self.s, self.ns)
+
+    def __eq__(self, other):
+        return self.s == other.s and self.ns == other.ns
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def packb(self):
+        return self.to_bytes()
+
+    @staticmethod
+    def unpackb(data, options):
+        ts = Timestamp.from_bytes(data)
+        if "timestamp" in options:
+            optts = options["timestamp"]
+            if optts == 1:
+                return ts.to_unix()
+            elif optts == 2:
+                return ts.to_unix_nano()
+            elif optts == 3:
+                return ts.to_datetime()
+        return ts
+
+    def to_bytes(self):
+        if (self.s >> 34) == 0:
+            data64 = self.ns << 34 | self.s
+            if data64 & 0xFFFFFFFF00000000 == 0:
+                data = struct.pack("!L", data64)
+            else:
+                data = struct.pack("!Q", data64)
+        else:
+            data = struct.pack("!Iq", self.ns, self.s)
+        return data
+
+    @staticmethod
+    def from_bytes(b):
+        l = len(b)
+        if l == 4:
+            s = struct.unpack("!L", b)[0]
+            ns = 0
+        elif l == 8:
+            data64 = struct.unpack("!Q", b)[0]
+            s = data64 & 0x3FFFFFFFF
+            ns = data64 >> 34
+        elif l == 12:
+            ns, s = struct.unpack("!Iq", b)
+        else:
+            raise ValueError
+        return Timestamp(s, ns)
+
+    def to_unix(self):
+        return self.s + self.ns / 1e9
+
+    @staticmethod
+    def from_unix(unix_sec):
+        s = int(unix_sec // 1)
+        ns = int((unix_sec % 1) * 10**9)
+        return Timestamp(s, ns)
+
+    def to_unix_nano(self):
+        return self.s * 10**9 + self.ns
+
+    @staticmethod
+    def from_unix_nano(ns):
+        return Timestamp(*divmod(ns, 10**9))
+
+    def to_datetime(self):
+        dt = datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+        dt += datetime.timedelta(seconds=self.s, nanoseconds=self.ns)
+        return dt
+
+    @staticmethod
+    def from_datetime(dt):
+        dtu = dt.astimezone(datetime.timezone.utc)
+        d = dtu - datetime.datetime(1970, 1, 1, tzinfo=datetime.timezone.utc)
+        return Timestamp.from_unix_nano(d.nanoseconds)
+
 
 @umsgpack.ext_serializable(0x50)
 class Complex:
